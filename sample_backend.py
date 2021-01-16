@@ -2,8 +2,9 @@ from flask import Flask
 from flask import request
 from flask import jsonify
 from flask_cors import CORS
+import random
 app = Flask(__name__)
-CORS(app) #
+CORS(app)
 
 users = {
    'users_list' :
@@ -36,6 +37,9 @@ users = {
    ]
 }
 
+def randID(name):
+    return name+str(random.randint(0,1000))
+
 @app.route('/')
 def hello_world():
     return 'Hello, world!'
@@ -54,8 +58,10 @@ def get_users():
         return users
     elif request.method == 'POST':
         userToAdd = request.get_json()
+        userToAdd['id'] = randID(userToAdd['name'])
         users['users_list'].append(userToAdd)
-        resp = jsonify(success=True)
+        resp = jsonify(success=True, user=userToAdd)
+        resp.status_code = 201
         # resp.status_code = 200 #optionally, you can always set a response code.
         # 200 is the default code for a normal response
         return resp
@@ -63,8 +69,6 @@ def get_users():
         userToDelete = request.get_json()
         users['users_list'].remove(userToDelete)
         resp = jsonify(success=True)
-        # resp.status_code = 200 #optionally, you can always set a response code.
-        # 200 is the default code for a normal response
         return resp
 
 
