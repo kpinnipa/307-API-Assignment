@@ -49,10 +49,23 @@ def hello_world():
 def get_users():
     if request.method == 'GET':
         search_username = request.args.get('name')
-        if search_username:
+        search_job = request.args.get('job')
+        if search_username and search_job:
+            subdict = {'users_list': []}
+            for user in users['users_list']:
+                if user['name'] == search_username and user['job'] == search_job:
+                    subdict['users_list'].append(user)
+            return subdict
+        elif search_username:
             subdict = {'users_list': []}
             for user in users['users_list']:
                 if user['name'] == search_username:
+                    subdict['users_list'].append(user)
+            return subdict
+        elif search_job:
+            subdict = {'users_list': []}
+            for user in users['users_list']:
+                if user['job'] == search_job:
                     subdict['users_list'].append(user)
             return subdict
         return users
@@ -72,21 +85,29 @@ def get_users():
         return resp
 
 
-@app.route('/users/<id>')
+@app.route('/users/<id>',  methods=['DELETE'])
 def get_user(id):
    if id :
       for user in users['users_list']:
         if user['id'] == id:
-           return user
+            if request.method == 'DELETE':
+                userToDelete = user
+                users['users_list'].remove(userToDelete)
+                resp = jsonify(success=True)
+                return resp
+            return user
       return ({})
    return users
 
+# @app.route('/users/<id>', methods=['DELETE'])
+# def delete_user()
 
-@app.route('/users/<name>/<job>')
-def get_user_name(name, job):
-   if name and job :
-      for user in users['users_list']:
-        if user['name'] == name and user['job'] == job:
-           return user
-      return ({})
-   return users
+
+# @app.route('/users/<name>/<job>')
+# def get_user_name(name, job):
+#    if name and job :
+#       for user in users['users_list']:
+#         if user['name'] == name and user['job'] == job:
+#            return user
+#       return ({})
+#    return users
