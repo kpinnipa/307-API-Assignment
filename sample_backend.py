@@ -3,111 +3,93 @@ from flask import request
 from flask import jsonify
 from flask_cors import CORS
 import random
+import string
+from model_mongodb import User
+
+
 app = Flask(__name__)
-CORS(app)
+
+#CORS stands for Cross Origin Requests.
+CORS(app) #Here we'll allow requests coming from any domain. Not recommended for production environment.
 
 users = {
-   'users_list' :
-   [
-      {
-         'id' : 'xyz789',
-         'name' : 'Charlie',
-         'job': 'Janitor',
-      },
-      {
-         'id' : 'abc123',
-         'name': 'Mac',
-         'job': 'Bouncer',
-      },
-      {
-         'id' : 'ppp222',
-         'name': 'Mac',
-         'job': 'Professor',
-      },
-      {
-         'id' : 'yat999',
-         'name': 'Dee',
-         'job': 'Aspring actress',
-      },
-      {
-         'id' : 'zap555',
-         'name': 'Dennis',
-         'job': 'Bartender',
-      }
-   ]
+    'users_list' :
+    [
+        {
+            'id' : 'xyz789',
+            'name' : 'Charlie',
+            'job': 'Janitor',
+        },
+        {
+            'id' : 'abc123',
+            'name': 'Mac',
+            'job': 'Bouncer',
+        },
+        {
+            'id' : 'ppp222',
+            'name': 'Mac',
+            'job': 'Professor',
+        },
+        {
+            'id' : 'yat999',
+            'name': 'Dee',
+            'job': 'Aspring actress',
+        },
+        {
+             'id' : 'zap555',
+            'name': 'Dennis',
+            'job': 'Bartender',
+        }
+    ]
 }
-
-def randID(name):
-    return name+str(random.randint(0,1000))
 
 @app.route('/')
 def hello_world():
-    return 'Hello, world!'
+    return 'Hello, World!'
 
-
-@app.route('/users', methods=['GET', 'POST', 'DELETE'])
+@app.route('/users', methods=['GET', 'POST'])
 def get_users():
     if request.method == 'GET':
         search_username = request.args.get('name')
         search_job = request.args.get('job')
         if search_username and search_job:
-            subdict = {'users_list': []}
-            for user in users['users_list']:
-                if user['name'] == search_username and user['job'] == search_job:
-                    subdict['users_list'].append(user)
-            return subdict
+            # TODO: Replace with database access -- DONE
+            result = User().find_by_name_and_job(search_username, search_job)
         elif search_username:
-            subdict = {'users_list': []}
-            for user in users['users_list']:
-                if user['name'] == search_username:
-                    subdict['users_list'].append(user)
-            return subdict
-        elif search_job:
-            subdict = {'users_list': []}
-            for user in users['users_list']:
-                if user['job'] == search_job:
-                    subdict['users_list'].append(user)
-            return subdict
-        return users
+            # using list shorthand for filtering the list.
+            # TODO: Replace with database access == DONE
+            result = User().find_by_name(search_username)
+        else:
+            result = User().find_all()
+        return {"users_list": result}
     elif request.method == 'POST':
-        userToAdd = request.get_json()
-        userToAdd['id'] = randID(userToAdd['name'])
-        users['users_list'].append(userToAdd)
-        resp = jsonify(success=True, user=userToAdd)
-        resp.status_code = 201
-        # resp.status_code = 200 #optionally, you can always set a response code.
-        # 200 is the default code for a normal response
-        return resp
-    elif request.method == 'DELETE':
-        userToDelete = request.get_json()
-        users['users_list'].remove(userToDelete)
-        resp = jsonify(success=True)
+        userToAdd = request.get_json() # no need to generate an id ourselves
+        newUser = User(userToAdd)
+        newUser.save() # pymongo gives the record an "_id" field automatically
+        resp = jsonify(newUser), 201
         return resp
 
-
-@app.route('/users/<id>',  methods=['DELETE'])
+@app.route('/users/<id>', methods=['GET', 'DELETE'])
 def get_user(id):
-   if id :
-      for user in users['users_list']:
-        if user['id'] == id:
-            if request.method == 'DELETE':
-                userToDelete = user
-                users['users_list'].remove(userToDelete)
-                resp = jsonify(success=True)
-                return resp
+    if request.method == 'GET':
+        user = User({"_id":id})
+        if user.reload() :
             return user
-      return ({})
-   return users
+        else :
+            return jsonify({"error": "User not found"}), 404
+    elif request.method == 'DELETE':
+        user = User({"_id":id})
+        resp = user.remove()
+        status = 204
+        # TODO: Check the resp object if the removal was successful or not.
+        # Return a 404 status code if it was not successful
+        if (resp['n'] == 0):
+            status = 404
+        return resp, status
 
-# @app.route('/users/<id>', methods=['DELETE'])
-# def delete_user()
-
-
-# @app.route('/users/<name>/<job>')
-# def get_user_name(name, job):
-#    if name and job :
-#       for user in users['users_list']:
-#         if user['name'] == name and user['job'] == job:
-#            return user
-#       return ({})
-#    return users
+def find_users_by_name_job(name, job):
+    subdict = {'users_list' : []}
+    for user in users['users_list']:
+        if user['name'] == name and user['job'] == job:
+            subdict['users_list'].append(user)
+    return subdict
